@@ -1,9 +1,20 @@
 #include <MAX3010x.h>
 #include "filters.h"
 
-// Sensor (adjust to your sensor type)
+// Sensor MAX30105
 MAX30105 sensor;
+
+// Configuração de aquisição para MAX30105
+const uint32_t kWireClockHz = 100000;
+const auto kMode = sensor.MODE_SPO2;
 const auto kSamplingRate = sensor.SAMPLING_RATE_400SPS;
+const auto kResolution = sensor.RESOLUTION_18BIT_4110US;
+const auto kAdcRange = sensor.ADC_RANGE_16384NA;
+const auto kSampleAveraging = sensor.SMP_AVE_4;
+const uint8_t kRedCurrent = 90;      // 18.0 mA
+const uint8_t kIrCurrent = 80;       // 16.0 mA
+const uint8_t kGreenCurrent = 0;     // 0.0 mA
+const bool kEnableFifoRollover = true;
 const float kSamplingFrequency = 400.0;
 
 // Finger Detection Threshold and Cooldown
@@ -23,15 +34,33 @@ const int kAveragingSamples = 50;
 const int kSampleThreshold = 5;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
-  if(sensor.begin() && sensor.setSamplingRate(kSamplingRate)) { 
-    Serial.println("Sensor initialized");
-  }
-  else {
+  // Configura I2C para 100 kHz
+  Wire.begin();
+  Wire.setClock(kWireClockHz);
+
+  if(!sensor.begin()) {
     Serial.println("Sensor not found");  
     while(1);
   }
+
+  if(!sensor.setMode(kMode) ||
+     !sensor.setSamplingRate(kSamplingRate) ||
+     !sensor.setResolution(kResolution) ||
+     !sensor.setADCRange(kAdcRange) ||
+     !sensor.setSampleAveraging(kSampleAveraging) ||
+     !sensor.setLedCurrent(sensor.LED_RED, kRedCurrent) ||
+     !sensor.setLedCurrent(sensor.LED_IR, kIrCurrent) ||
+     !sensor.setLedCurrent(sensor.LED_GREEN, kGreenCurrent)) {
+    Serial.println("Sensor configuration failed");
+    while(1);
+  }
+
+  if(kEnableFifoRollover) sensor.enableFIFORollover();
+  else sensor.disableFIFORollover();
+
+  Serial.println("Sensor initialized (MAX30105)");
 }
 
 // Filter Instances
